@@ -1,55 +1,91 @@
 import streamlit as st
+import pandas as pd
+from PIL import Image
+from googletrans import Translator
+import os
 
-# Show logo
-st.image("logo.png", width=120)
+# Load logo
+if os.path.exists("logo.png"):
+    logo = Image.open("logo.png")
+else:
+    logo = None
 
-# App title
-st.markdown("<h1 style='color:#045e84;'>SymptomChecker</h1>", unsafe_allow_html=True)
-st.markdown("### Your AI-powered assistant for OTC medicine suggestions")
+# Load data
+@st.cache_data
+def load_data():
+    return pd.read_csv("symptom_disease_suggestions.csv")
 
-# Language selection
-lang = st.selectbox("Select Language / भाषा चुनें / ভাষা বেছে নিন", ["English", "Hindi", "Bengali"])
+def match_symptoms(user_symptoms, data):
+    user_symptom_list = [s.strip().lower() for s in user_symptoms.split(",")]
+    results = []
+    for _, row in data.iterrows():
+        known_symptoms = [s.strip().lower() for s in row["Symptoms"].split(";")]
+        if any(symptom in known_symptoms for symptom in user_symptom_list):
+            results.append(row)
+    return pd.DataFrame(results)
 
-# Multilingual symptom data
-symptoms_dict = {
+# Translator setup
+translator = Translator()
+
+def translate(text, dest):
+    try:
+        return translator.translate(text, dest=dest).text
+    except:
+        return text
+
+# UI config
+st.set_page_config(page_title="SymptomChecker - AI-Based OTC Suggestion App", page_icon="⚕", layout="centered")
+if logo:
+    st.image(logo, width=100)
+st.title("SymptomChecker")
+st.caption("An AI-powered multilingual tool for safe OTC medicine suggestions")
+
+# Language selector
+lang = st.selectbox("Choose Language", ["English", "Hindi", "Bengali"])
+
+# Language dictionary
+translations = {
     "English": {
-        "Headache": ("Paracetamol, Ibuprofen", "Rest, drink water, avoid stress."),
-        "Cold & Sneezing": ("Cetirizine, Nasal Spray", "Avoid dust, steam inhalation."),
-        "Acidity": ("Antacids (Gelusil, Rantac)", "Avoid spicy and oily foods."),
-        "Fever": ("Paracetamol", "Stay hydrated and rest."),
-        "Cough": ("Cough syrup (Dextromethorphan)", "Avoid cold drinks, steam inhalation."),
-        "Allergies": ("Antihistamines (Loratadine)", "Avoid allergens, use air purifiers.")
+        "enter_symptoms": "Enter your symptoms (comma-separated):",
+        "check": "Check Suggestions",
+        "possible_disease": "Possible Disease:",
+        "medications": "OTC Medications:",
+        "advice": "Advice:",
+        "no_match": "No matching condition found. Please try again with different symptoms."
     },
     "Hindi": {
-        "सिरदर्द": ("पैरासिटामोल, आइबुप्रोफेन", "आराम करें, पानी पिएं, तनाव से बचें।"),
-        "जुकाम और छींक": ("सेटिरीज़िन, नेज़ल स्प्रे", "धूल से बचें, भाप लें।"),
-        "अम्लता": ("ऐंटासिड (जेलसिल, रैनटैक)", "मसालेदार और तली हुई चीज़ों से बचें।"),
-        "बुखार": ("पैरासिटामोल", "पानी पिएं और आराम करें।"),
-        "खांसी": ("कफ सिरप (डेक्स्ट्रोमेथॉर्फन)", "ठंडे पेय से बचें, भाप लें।"),
-        "एलर्जी": ("एंटीहिस्टामाइन (लोरेटाडीन)", "एलर्जेन से बचें, एयर प्यूरीफायर का उपयोग करें।")
+        "enter_symptoms": "अपने लक्षण दर्ज करें (कॉमा से अलग करें):",
+        "check": "सुझाव देखें",
+        "possible_disease": "संभावित बीमारी:",
+        "medications": "ओटीसी दवाएं:",
+        "advice": "सलाह:",
+        "no_match": "कोई मेल नहीं मिला। कृपया अलग लक्षणों के साथ पुनः प्रयास करें।"
     },
     "Bengali": {
-        "মাথাব্যথা": ("প্যারাসিটামল, আইবুপ্রোফেন", "বিশ্রাম নিন, জল খান, স্ট্রেস এড়িয়ে চলুন।"),
-        "ঠান্ডা ও হাঁচি": ("সেটিরিজিন, নাকের স্প্রে", "ধুলা এড়িয়ে চলুন, ভাপ নিন।"),
-        "অম্লতা": ("অ্যান্টাসিড (জেলুসিল, র্যানটাক)", "ঝাল ও ভাজা খাবার এড়িয়ে চলুন।"),
-        "জ্বর": ("প্যারাসিটামল", "জল পান করুন এবং বিশ্রাম নিন।"),
-        "কাশি": ("কাশির সিরাপ (ডেক্সট্রোমেথরফান)", "ঠান্ডা পানীয় এড়িয়ে চলুন, ভাপ নিন।"),
-        "অ্যালার্জি": ("অ্যান্টিহিস্টামিন (লোরাটাডিন)", "অ্যালার্জেন এড়িয়ে চলুন, এয়ার পিউরিফায়ার ব্যবহার করুন।")
+        "enter_symptoms": "আপনার উপসর্গ লিখুন (কমা দিয়ে আলাদা করুন):",
+        "check": "সুজ্ঞা দেখুন",
+        "possible_disease": "সম্ভাব্য রোগ:",
+        "medications": "ওটিসি ওষুধ:",
+        "advice": "পরামর্শ:",
+        "no_match": "মিল পাওয়া যায়নি। দয়া করে অন্য উপসর্গ দিয়ে চেষ্টা করুন।"
     }
 }
 
-# Symptom selection
-symptoms = list(symptoms_dict[lang].keys())
-selected_symptoms = st.multiselect("Select Your Symptoms:", symptoms)
+# Input
+user_input = st.text_input(translations[lang]["enter_symptoms"], "Fever, Cough")
 
-# Output results
-if selected_symptoms:
-    st.subheader("Suggested Treatments:")
-    for symptom in selected_symptoms:
-        drugs, advice = symptoms_dict[lang][symptom]
-        st.markdown(f"#### {symptom}")
-        st.markdown(f"- **Drugs:** {drugs}")
-        st.markdown(f"- **Advice:** {advice}")
-        st.markdown("---")
+if st.button(translations[lang]["check"]):
+    data = load_data()
+    result_df = match_symptoms(user_input, data)
 
-st.markdown("<small style='color:gray;'>Disclaimer: For educational use only. Always consult a registered pharmacist or doctor before taking any medication.</small>", unsafe_allow_html=True)
+    if not result_df.empty:
+        for i, row in result_df.iterrows():
+            st.subheader(f"{translations[lang]['possible_disease']} {translate(row['Possible Disease'], lang[:2])}")
+            st.write(f"**{translations[lang]['medications']}** {translate(row['OTC Medications'], lang[:2])}")
+            st.write(f"**{translations[lang]['advice']}** {translate(row['Advice'], lang[:2])}")
+            st.markdown("---")
+    else:
+        st.warning(translations[lang]["no_match"])
+
+st.markdown("---")
+st.markdown("Made with ❤ by SymptomChecker")
