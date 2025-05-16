@@ -5,7 +5,7 @@ st.image("logo.png", width=120)
 
 # App title
 st.markdown("<h1 style='color:#045e84;'>SymptomChecker</h1>", unsafe_allow_html=True)
-st.markdown("### An AI-Based Symptom Suggestion App (By You)")
+st.markdown("### Your AI-powered assistant for OTC medicine suggestions")
 
 # Language selection
 lang = st.selectbox("Select Language / भाषा चुनें / ভাষা বেছে নিন", ["English", "Hindi", "Bengali"])
